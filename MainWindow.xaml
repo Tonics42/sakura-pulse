@@ -1,0 +1,732 @@
+﻿<Window x:Class="ProcessAnalyzerPro.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:ProcessAnalyzerPro.ViewModels"
+        xmlns:conv="clr-namespace:ProcessAnalyzerPro.Converters"
+        mc:Ignorable="d"
+        Title="Sakura Pulse"
+        Width="1380" Height="820"
+        MinWidth="1000" MinHeight="600"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        Background="#FFFEFEFF"
+        Icon="pack://application:,,,/Resources/app_icon.ico"
+        ResizeMode="CanResize"
+        SnapsToDevicePixels="True">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="44"
+                      ResizeBorderThickness="6"
+                      GlassFrameThickness="0"
+                      UseAeroCaptionButtons="False"
+                      NonClientFrameEdges="None"/>
+    </WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <conv:CpuLoadToBrushConverter  x:Key="CpuToBrush"/>
+        <conv:NetworkToBrushConverter  x:Key="NetToBrush"/>
+    </Window.Resources>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ROOT GRID
+    ═══════════════════════════════════════════════════════════════════ -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="44"/>   <!-- ① Title bar     -->
+            <RowDefinition Height="58"/>   <!-- ② Control panel -->
+            <RowDefinition Height="*"/>    <!-- ③ Tab content   -->
+            <RowDefinition Height="72"/>   <!-- ④ Status bar    -->
+        </Grid.RowDefinitions>
+
+        <!-- ══════════════════════════════════════════════════════════
+             SAKURA BACKGROUND — spans all rows
+        ══════════════════════════════════════════════════════════════ -->
+        <Image Grid.Row="0" Grid.RowSpan="4"
+               Source="pack://application:,,,/Resources/sakura_bg.jpg"
+               Stretch="UniformToFill"/>
+        <!-- Soft sakura overlay — slight warm tint, very subtle darkening on left for text contrast -->
+        <Rectangle Grid.Row="0" Grid.RowSpan="4" IsHitTestVisible="False">
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#14FFFFFF" Offset="0"/>
+                    <GradientStop Color="#08FFFFFF" Offset="0.55"/>
+                    <GradientStop Color="#00FFFFFF" Offset="1"/>
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+
+        <!-- ══════════════════════════════════════════════════════════
+             ① TITLE BAR
+        ══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0"
+                Background="#C8E4E0F8"
+                BorderBrush="#FFD4C0DC" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Logo + Title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="14,0,0,0">
+                    <Viewbox Width="22" Height="22" Margin="0,0,8,0">
+                        <Canvas Width="24" Height="24">
+                            <Polygon Points="12,1 22,6.5 22,17.5 12,23 2,17.5 2,6.5"
+                                     Stroke="#FFC07898" StrokeThickness="1.5" Fill="#33F5DCE8"/>
+                            <Line X1="12" Y1="5"  X2="12" Y2="19" Stroke="#FFC07898" StrokeThickness="1" Opacity="0.5"/>
+                            <Line X1="5"  Y1="12" X2="19" Y2="12" Stroke="#FFC07898" StrokeThickness="1" Opacity="0.5"/>
+                            <Ellipse Canvas.Left="9" Canvas.Top="9" Width="6" Height="6" Fill="#FFC07898" Opacity="0.8"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Foreground="#FFC07898" FontFamily="Segoe UI" FontWeight="SemiBold" FontSize="15" Text="Sakura" VerticalAlignment="Center"/>
+                    <TextBlock Foreground="#FF0E081A" FontFamily="Segoe UI" FontWeight="SemiBold" FontSize="15" Text="Pulse" VerticalAlignment="Center"/>
+                    <TextBlock Foreground="#FF9870B8" FontFamily="Segoe UI" FontWeight="Light"    FontSize="12" Text="Pro" VerticalAlignment="Center" Margin="2,2,18,0"/>
+                    <Rectangle Width="1" Height="18" Fill="#FFD4C0DC" Margin="0,0,18,0"/>
+                    <TextBlock Foreground="#FF8A7898" FontFamily="Segoe UI" FontSize="11" Text="Session " VerticalAlignment="Center"/>
+                    <TextBlock Foreground="#FFC07898" FontFamily="Consolas" FontSize="13"
+                               FontWeight="Bold" VerticalAlignment="Center"
+                               Text="{Binding SessionTime}"/>
+                </StackPanel>
+
+                <!-- Mascot -->
+                <Border Grid.Column="1" BorderBrush="#FFD4C0DC" BorderThickness="1,0,1,0"
+                        Padding="18,0" Margin="0,4">
+                    <Grid VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Viewbox Grid.Column="0" Width="34" Height="34">
+                            <Canvas Width="40" Height="40">
+                                <Ellipse Canvas.Left="2" Canvas.Top="2" Width="36" Height="36" StrokeThickness="1.5">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Stroke" Value="#FFC07898"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding MascotLevel}" Value="Medium">
+                                                    <Setter Property="Stroke" Value="#FFC8A060"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MascotLevel}" Value="High">
+                                                    <Setter Property="Stroke" Value="#FFC87878"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <Ellipse Canvas.Left="6" Canvas.Top="6" Width="28" Height="28">
+                                    <Ellipse.Fill>
+                                        <RadialGradientBrush>
+                                            <GradientStop Color="#FFFCE8F4" Offset="0"/>
+                                            <GradientStop Color="#FFFFF0F8" Offset="1"/>
+                                        </RadialGradientBrush>
+                                    </Ellipse.Fill>
+                                </Ellipse>
+                                <Ellipse Canvas.Left="11" Canvas.Top="14" Width="7" Height="5">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="#FFC07898"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding MascotLevel}" Value="Medium">
+                                                    <Setter Property="Fill" Value="#FFC8A060"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MascotLevel}" Value="High">
+                                                    <Setter Property="Fill" Value="#FFC87878"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <Ellipse Canvas.Left="22" Canvas.Top="14" Width="7" Height="5">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="#FFC07898"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding MascotLevel}" Value="Medium">
+                                                    <Setter Property="Fill" Value="#FFC8A060"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MascotLevel}" Value="High">
+                                                    <Setter Property="Fill" Value="#FFC87878"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <Polyline Points="13,26 17,24 23,24 27,26" StrokeThickness="1.5" StrokeLineJoin="Round">
+                                    <Polyline.Style>
+                                        <Style TargetType="Polyline">
+                                            <Setter Property="Stroke" Value="#FFC07898"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding MascotLevel}" Value="Medium">
+                                                    <Setter Property="Stroke" Value="#FFC8A060"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MascotLevel}" Value="High">
+                                                    <Setter Property="Stroke" Value="#FFC87878"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Polyline.Style>
+                                </Polyline>
+                            </Canvas>
+                        </Viewbox>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                            <TextBlock FontFamily="Segoe UI" FontSize="8" Foreground="#FF8A7898" Text="AI STATUS"/>
+                            <TextBlock x:Name="MascotStatusBlock"
+                                       FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold"
+                                       Text="{Binding MascotStatusText}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#FFC07898"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding MascotLevel}" Value="Medium">
+                                                <Setter Property="Foreground" Value="#FFC8A060"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding MascotLevel}" Value="High">
+                                                <Setter Property="Foreground" Value="#FFC87878"/>
+                                                <DataTrigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard RepeatBehavior="Forever">
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                             From="1" To="0.3" Duration="0:0:0.6"
+                                                                             AutoReverse="True"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </DataTrigger.EnterActions>
+                                                <DataTrigger.ExitActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                             To="1" Duration="0:0:0.2"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </DataTrigger.ExitActions>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock FontFamily="Consolas" FontSize="8"
+                                       Foreground="{Binding TotalCpuPercent, Converter={StaticResource CpuToBrush}}"
+                                       Text="{Binding TotalCpuPercent, StringFormat='CPU {0:F0}%'}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Window Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button x:Name="MinimizeBtn" Content="&#xE921;" Style="{StaticResource ChromeButton}" Click="MinimizeBtn_Click"/>
+                    <Button x:Name="MaximizeBtn" Content="&#xE922;" Style="{StaticResource ChromeButton}" Click="MaximizeBtn_Click"/>
+                    <Button x:Name="CloseBtn"    Content="&#xE8BB;" Style="{StaticResource ChromeCloseButton}" Click="CloseBtn_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ══════════════════════════════════════════════════════════
+             ② CONTROL PANEL
+        ══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="1" Background="#C8E4E0F8"
+                BorderBrush="#FFD4C0DC" BorderThickness="0,0,0,1">
+            <Grid Margin="16,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Command="{Binding StartStopCommand}"
+                        Content="{Binding ToggleButtonLabel}"
+                        VerticalAlignment="Center">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource CyberButtonPrimary}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMonitoring}" Value="True">
+                                    <Setter Property="Foreground"  Value="{StaticResource AccentPinkBrush}"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentPinkBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <Border Grid.Column="1" VerticalAlignment="Center"
+                        Background="#DDFFF4FA" BorderBrush="#FFD4C0DC" BorderThickness="1"
+                        CornerRadius="4" Padding="10,4" Margin="16,0,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Proc " FontFamily="Segoe UI" FontSize="10"
+                                   Foreground="{StaticResource TextGrayBrush}"/>
+                        <TextBlock FontFamily="Consolas" FontSize="10" FontWeight="Bold"
+                                   Foreground="{StaticResource AccentCyanBrush}"
+                                   Text="{Binding FilteredCount}"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Column="3" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="220"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="&#x1F50D; Filter"
+                               FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextGrayBrush}" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="2"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource CyberSearchBox}"
+                             Height="28" VerticalAlignment="Center"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- ══════════════════════════════════════════════════════════
+             ③ TAB CONTROL — PROCESSES / STARTUP
+        ══════════════════════════════════════════════════════════════ -->
+        <TabControl Grid.Row="2" Style="{StaticResource CyberTabControl}">
+
+            <!-- ─── TAB 1: PROCESSES ─────────────────────────────── -->
+            <TabItem Style="{StaticResource CyberTabItem}" Header="⚡ PROCESSES">
+                <DataGrid Style="{StaticResource CyberDataGrid}"
+                          ItemsSource="{Binding FilteredProcesses}"
+                          SelectedItem="{Binding SelectedProcess, Mode=TwoWay}"
+                          VirtualizingPanel.IsVirtualizing="True">
+
+                        <!-- Context Menu -->
+                        <DataGrid.ContextMenu>
+                            <ContextMenu Style="{StaticResource CyberContextMenu}">
+                                <MenuItem Header="KILL PROCESS"
+                                          Style="{StaticResource CyberMenuItem}"
+                                          Click="KillMenuItem_Click"/>
+                                <Separator Style="{StaticResource CyberMenuSeparator}"/>
+                                <MenuItem Header="SET PRIORITY" Style="{StaticResource CyberMenuItem}">
+                                    <MenuItem Header="Realtime"    Tag="RealTime"    Style="{StaticResource CyberMenuItem}" Click="Priority_Click"/>
+                                    <MenuItem Header="High"        Tag="High"        Style="{StaticResource CyberMenuItem}" Click="Priority_Click"/>
+                                    <MenuItem Header="Above Normal" Tag="AboveNormal" Style="{StaticResource CyberMenuItem}" Click="Priority_Click"/>
+                                    <MenuItem Header="Normal"      Tag="Normal"      Style="{StaticResource CyberMenuItem}" Click="Priority_Click"/>
+                                    <MenuItem Header="Below Normal" Tag="BelowNormal" Style="{StaticResource CyberMenuItem}" Click="Priority_Click"/>
+                                    <MenuItem Header="Idle"        Tag="Idle"        Style="{StaticResource CyberMenuItem}" Click="Priority_Click"/>
+                                </MenuItem>
+                                <Separator Style="{StaticResource CyberMenuSeparator}"/>
+                                <MenuItem Header="OPEN FILE LOCATION"
+                                          Style="{StaticResource CyberMenuItem}"
+                                          Click="OpenLocationMenuItem_Click"/>
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
+
+                        <DataGrid.Columns>
+
+                            <!-- Process Name -->
+                            <DataGridTextColumn Header="PROCESS NAME" Binding="{Binding DisplayName}"
+                                                MinWidth="130" Width="*" SortMemberPath="Name">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"        Value="{StaticResource TextWhiteBrush}"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- PID -->
+                            <DataGridTextColumn Header="PID" Binding="{Binding Pid}" Width="62" SortMemberPath="Pid">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"          Value="{StaticResource TextGrayBrush}"/>
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter Property="VerticalAlignment"   Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- CPU % with mini bar -->
+                            <DataGridTemplateColumn Header="CPU %" Width="122" SortMemberPath="CpuUsage">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid Height="20" Margin="2,1">
+                                            <ProgressBar Value="{Binding CpuUsage, Mode=OneWay}" Maximum="100"
+                                                         Style="{StaticResource MiniCpuBar}"/>
+                                            <TextBlock Text="{Binding CpuUsageDisplay}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       FontFamily="Consolas" FontSize="10" FontWeight="Bold"
+                                                       Foreground="White" IsHitTestVisible="False"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- RAM (current) -->
+                            <DataGridTextColumn Header="RAM" Binding="{Binding CurrentRamDisplay}"
+                                                Width="82" SortMemberPath="CurrentRamMb">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"          Value="#FF3878C0"/>
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter Property="VerticalAlignment"   Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Peak RAM -->
+                            <DataGridTextColumn Header="PEAK RAM" Binding="{Binding PeakRamDisplay}"
+                                                Width="90" SortMemberPath="PeakRamMb">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"          Value="{StaticResource TextGrayBrush}"/>
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter Property="VerticalAlignment"   Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Disk Read -->
+                            <DataGridTextColumn Header="DISK R" Binding="{Binding DiskReadDisplay}"
+                                                Width="84" SortMemberPath="DiskReadKbps">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"          Value="#FF2A9060"/>
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter Property="VerticalAlignment"   Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Disk Write -->
+                            <DataGridTextColumn Header="DISK W" Binding="{Binding DiskWriteDisplay}"
+                                                Width="84" SortMemberPath="DiskWriteKbps">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"          Value="#FFB87030"/>
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter Property="VerticalAlignment"   Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- GPU % -->
+                            <DataGridTextColumn Header="GPU %" Binding="{Binding GpuDisplay}"
+                                                Width="74" SortMemberPath="GpuPercent">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"          Value="#FF7848B8"/>
+                                        <Setter Property="HorizontalAlignment" Value="Center"/>
+                                        <Setter Property="VerticalAlignment"   Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Network -->
+                            <DataGridTemplateColumn Header="NETWORK" Width="100" SortMemberPath="NetworkConnections">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding NetworkDisplay}"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                   FontFamily="Consolas" FontSize="10" FontWeight="Bold"
+                                                   Foreground="{Binding NetworkConnections, Converter={StaticResource NetToBrush}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Duration -->
+                            <DataGridTextColumn Header="DURATION" Binding="{Binding ActiveDurationDisplay}"
+                                                Width="90" SortMemberPath="ActiveDuration">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"          Value="{StaticResource TextGrayBrush}"/>
+                                        <Setter Property="HorizontalAlignment" Value="Center"/>
+                                        <Setter Property="VerticalAlignment"   Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                        </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- ─── TAB 2: STARTUP PROGRAMS ──────────────────────── -->
+            <TabItem Style="{StaticResource CyberTabItem}" Header="🚀 STARTUP">
+                <Grid Background="Transparent">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="46"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Startup toolbar -->
+                    <Border Grid.Row="0" Background="#C8E4E0F8"
+                            BorderBrush="#FFD4C0DC" BorderThickness="0,0,0,1">
+                        <Grid Margin="16,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0"
+                                    Content="Refresh"
+                                    Command="{Binding RefreshStartupCommand}"
+                                    Style="{StaticResource CyberButtonPrimary}"
+                                    VerticalAlignment="Center"/>
+                            <Button Grid.Column="2"
+                                    Content="+ Add"
+                                    Click="AddStartupBtn_Click"
+                                    Style="{StaticResource CyberButtonSecondary}"
+                                    VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="TOTAL: " FontFamily="Consolas" FontSize="10"
+                                           Foreground="{StaticResource TextGrayBrush}"/>
+                                <TextBlock FontFamily="Consolas" FontSize="10" FontWeight="Bold"
+                                           Foreground="{StaticResource AccentCyanBrush}"
+                                           Text="{Binding StartupEntries.Count}"/>
+                                <TextBlock Text=" entries" FontFamily="Consolas" FontSize="10"
+                                           Foreground="{StaticResource TextGrayBrush}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Startup DataGrid -->
+                    <DataGrid Grid.Row="1" Style="{StaticResource CyberDataGrid}"
+                              ItemsSource="{Binding StartupEntries}"
+                              VirtualizingPanel.IsVirtualizing="True">
+                        <DataGrid.Columns>
+
+                            <!-- Name -->
+                            <DataGridTextColumn Header="NAME" Binding="{Binding Name}"
+                                                MinWidth="140" Width="*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"        Value="{StaticResource TextWhiteBrush}"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Command / Path (truncated) -->
+                            <DataGridTextColumn Header="COMMAND / PATH" Binding="{Binding Command}"
+                                                Width="*" MinWidth="200">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"        Value="{StaticResource TextGrayBrush}"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                        <Setter Property="TextTrimming"      Value="CharacterEllipsis"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Location HKCU/HKLM -->
+                            <DataGridTextColumn Header="SCOPE" Binding="{Binding Location}" Width="80">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground"          Value="{StaticResource AccentYellowBrush}"/>
+                                        <Setter Property="HorizontalAlignment" Value="Center"/>
+                                        <Setter Property="VerticalAlignment"   Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Status -->
+                            <DataGridTemplateColumn Header="STATUS" Width="90">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding StatusDisplay}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontFamily="Consolas" FontSize="10" FontWeight="Bold">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource AccentCyanBrush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                            <Setter Property="Foreground" Value="{StaticResource TextGrayBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Toggle + Remove action buttons -->
+                            <DataGridTemplateColumn Header="ACTION" Width="210">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center" Margin="2,3">
+                                            <!-- Disable / Enable toggle — Text bound directly like StatusDisplay -->
+                                            <Border CornerRadius="5" BorderThickness="1"
+                                                    Background="#EEFFFFFF" Margin="0,0,6,0" Padding="14,5"
+                                                    Cursor="Hand" MouseLeftButtonUp="ToggleBorder_Click">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="BorderBrush" Value="#FF9870B8"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                <Setter Property="BorderBrush" Value="#FFC07898"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock Text="{Binding ToggleText}"
+                                                           FontFamily="Segoe UI" FontSize="11" FontWeight="SemiBold"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#FF9870B8"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                    <Setter Property="Foreground" Value="#FFC07898"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Border>
+                                            <!-- Remove -->
+                                            <Border CornerRadius="5" BorderThickness="1"
+                                                    BorderBrush="#FFA03050" Background="#EEFFFFFF"
+                                                    Padding="10,5" Cursor="Hand"
+                                                    MouseLeftButtonUp="RemoveBorder_Click"
+                                                    ToolTip="Удалить из автозапуска">
+                                                <TextBlock Text="Удалить" Foreground="#FFA03050"
+                                                           FontFamily="Segoe UI" FontSize="11" FontWeight="SemiBold"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- ══════════════════════════════════════════════════════════
+             ④ STATUS BAR — CPU · RAM · GPU · Export
+        ══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="3" Background="#C8E4E0F8"
+                BorderBrush="#FFD4C0DC" BorderThickness="0,1,0,0">
+            <Grid Margin="16,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- CPU Bar -->
+                <Grid Grid.Column="0" VerticalAlignment="Center">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="4"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="CPU"
+                                   FontFamily="Segoe UI" FontSize="9" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextGrayBrush}"/>
+                        <TextBlock Grid.Column="2" FontFamily="Consolas" FontSize="11" FontWeight="Bold"
+                                   Foreground="{Binding TotalCpuPercent, Converter={StaticResource CpuToBrush}}"
+                                   Text="{Binding TotalCpuPercent, StringFormat='{}{0:F0}%'}"/>
+                    </Grid>
+                    <ProgressBar Grid.Row="2"
+                                 Value="{Binding TotalCpuPercent, Mode=OneWay}"
+                                 Maximum="100" Height="10"
+                                 Style="{StaticResource NeonProgressBarPink}"/>
+                </Grid>
+
+                <Rectangle Grid.Column="1" Width="1" Fill="#FFD4C0DC" VerticalAlignment="Stretch" Margin="0,8"/>
+
+                <!-- RAM Bar -->
+                <Grid Grid.Column="2" VerticalAlignment="Center">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="4"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="RAM"
+                                   FontFamily="Segoe UI" FontSize="9" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextGrayBrush}"/>
+                        <TextBlock Grid.Column="2" FontFamily="Consolas" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource AccentCyanBrush}"
+                                   Text="{Binding TotalRamLabel}"/>
+                    </Grid>
+                    <ProgressBar Grid.Row="2"
+                                 Value="{Binding TotalRamPercent, Mode=OneWay}"
+                                 Maximum="100" Height="10"
+                                 Style="{StaticResource NeonProgressBar}"/>
+                </Grid>
+
+                <Rectangle Grid.Column="3" Width="1" Fill="#FFD4C0DC" VerticalAlignment="Stretch" Margin="0,8"/>
+
+                <!-- GPU Bar -->
+                <Grid Grid.Column="4" VerticalAlignment="Center">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="4"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="GPU"
+                                   FontFamily="Segoe UI" FontSize="9" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextGrayBrush}"/>
+                        <TextBlock Grid.Column="2" FontFamily="Consolas" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource AccentYellowBrush}"
+                                   Text="{Binding TotalGpuLabel}"/>
+                    </Grid>
+                    <ProgressBar Grid.Row="2"
+                                 Value="{Binding TotalGpuPercent, Mode=OneWay}"
+                                 Maximum="100" Height="10"
+                                 Style="{StaticResource NeonProgressBarYellow}"/>
+                </Grid>
+
+                <Rectangle Grid.Column="5" Width="1" Fill="#FFD4C0DC" VerticalAlignment="Stretch" Margin="0,8"/>
+
+                <!-- Export buttons -->
+                <StackPanel Grid.Column="6" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="8,0,0,0">
+                    <Button Content="EXPORT JSON"
+                            Command="{Binding ExportJsonCommand}"
+                            Style="{StaticResource CyberButtonSecondary}"
+                            Margin="0,0,8,0"/>
+                    <Button Content="EXPORT CSV"
+                            Command="{Binding ExportCsvCommand}"
+                            Style="{StaticResource CyberButtonSecondary}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Decorative top-edge sakura line -->
+        <Rectangle Grid.Row="0" Height="2" VerticalAlignment="Top" HorizontalAlignment="Stretch">
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#00000000" Offset="0"/>
+                    <GradientStop Color="#AAC07898" Offset="0.5"/>
+                    <GradientStop Color="#00000000" Offset="1"/>
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+    </Grid>
+</Window>
