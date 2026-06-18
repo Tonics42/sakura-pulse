@@ -1,3 +1,4 @@
+using System.IO;
 using System.Threading;
 using System.Windows;
 
@@ -20,6 +21,8 @@ public partial class App : Application
             Shutdown();
             return;
         }
+
+        CreateDesktopShortcut();
 
         // Background thread listens for "show me" signals from future duplicate launches
         var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, EventName);
@@ -48,6 +51,28 @@ public partial class App : Application
         };
 
         base.OnStartup(e);
+    }
+
+    private static void CreateDesktopShortcut()
+    {
+        try
+        {
+            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string lnkPath = Path.Combine(desktop, "Sakura Pulse.lnk");
+            if (File.Exists(lnkPath)) return; // already created
+
+            string exe = Environment.ProcessPath
+                ?? System.Diagnostics.Process.GetCurrentProcess().MainModule!.FileName;
+
+            dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell")!)!;
+            dynamic link  = shell.CreateShortcut(lnkPath);
+            link.TargetPath       = exe;
+            link.WorkingDirectory = Path.GetDirectoryName(exe);
+            link.IconLocation     = $"{exe},0";
+            link.Description      = "Sakura Pulse — System Monitor";
+            link.Save();
+        }
+        catch { }
     }
 
     protected override void OnExit(ExitEventArgs e)
