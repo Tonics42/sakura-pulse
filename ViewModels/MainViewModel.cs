@@ -150,6 +150,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public ICommand SetPriorityCommand    { get; }
 
     // ── Monitoring ────────────────────────────────────────────────────────────
+    public void SuspendMonitoring() => _monitor.Suspend();
+    public void ResumeMonitoring()  => _monitor.Resume();
+
     private void ToggleMonitoring()
     {
         if (IsMonitoring)
@@ -170,7 +173,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 SessionTime = (DateTime.UtcNow - _sessionStart).ToString(@"hh\:mm\:ss");
             _sessionTimer.Start();
 
-            _monitor.Start(TimeSpan.FromSeconds(2));
+            _monitor.Start(TimeSpan.FromSeconds(3));
             IsMonitoring = true;
         }
     }

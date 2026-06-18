@@ -19,7 +19,7 @@
 | Category | Details |
 |---|---|
 | **Process monitoring** | CPU %, RAM, Peak RAM, Disk R/W, GPU %, Network connections, Duration |
-| **Live sorting** | Processes automatically sorted by CPU usage, updated every 2 s |
+| **Live sorting** | Processes automatically sorted by CPU usage, updated every 3 s |
 | **Search / filter** | Instant filter by process name |
 | **System tray** | Closes to tray — monitoring continues in background |
 | **Startup manager** | View, enable/disable, add, or remove Windows startup entries |

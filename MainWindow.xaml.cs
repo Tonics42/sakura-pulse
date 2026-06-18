@@ -59,6 +59,7 @@ public partial class MainWindow : Window
 
     public void BringToFront()
     {
+        _vm.ResumeMonitoring();
         Show();
         WindowState = WindowState.Normal;
         Activate();
@@ -78,6 +79,7 @@ public partial class MainWindow : Window
         if (!_forceClose)
         {
             e.Cancel = true;
+            _vm.SuspendMonitoring();
             Hide();
             _trayIcon.ShowBalloonTip(
                 2000, "Sakura Pulse",

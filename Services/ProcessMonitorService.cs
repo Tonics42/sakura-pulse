@@ -77,6 +77,9 @@ public sealed class ProcessMonitorService : IDisposable
 
     private readonly Dictionary<int, CpuSample> _cpuHistory = new();
     private readonly Dictionary<int, IoSample>  _ioHistory  = new();
+    private Dictionary<int, float> _lastGpuMap = new();
+    private int  _tickCount;
+    private volatile bool _suspended;
     private PerformanceCounter? _sysCpuCounter;
     private CancellationTokenSource? _cts;
     private Task? _pollingTask;
@@ -102,6 +105,9 @@ public sealed class ProcessMonitorService : IDisposable
         _sysCpuCounter = null;
     }
 
+    public void Suspend() => _suspended = true;
+    public void Resume()  => _suspended = false;
+
     private async Task RunLoopAsync(TimeSpan interval, CancellationToken ct)
     {
         using var timer = new PeriodicTimer(interval);
@@ -109,6 +115,7 @@ public sealed class ProcessMonitorService : IDisposable
         {
             while (await timer.WaitForNextTickAsync(ct))
             {
+                if (_suspended) continue;
                 try { await CollectAsync(); }
                 catch (OperationCanceledException) { return; }
                 catch { /* snapshot failed; retry next tick */ }
@@ -120,7 +127,8 @@ public sealed class ProcessMonitorService : IDisposable
     private Task CollectAsync() => Task.Run(() =>
     {
         var networkMap = NetworkMonitorService.GetConnectionCountsByPid();
-        var gpuMap     = GpuMonitorService.GetGpuUsageByPid();
+        if (++_tickCount % 3 == 0) _lastGpuMap = GpuMonitorService.GetGpuUsageByPid();
+        var gpuMap = _lastGpuMap;
         var processes  = Process.GetProcesses();
         var now        = DateTime.UtcNow;
         var results    = new List<ProcessMetricSnapshot>(processes.Length);
