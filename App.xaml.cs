@@ -1,32 +1,59 @@
+using System.Threading;
 using System.Windows;
 
 namespace ProcessAnalyzerPro;
 
 public partial class App : Application
 {
+    private static Mutex? _mutex;
+    private const string MutexName = "SakuraPulse_SingleInstance_2025";
+    private const string EventName = "SakuraPulse_BringToFront_2025";
+
     protected override void OnStartup(StartupEventArgs e)
     {
-        // Register ALL handlers before base.OnStartup so nothing slips through
-        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        _mutex = new Mutex(true, MutexName, out bool isOwner);
+        if (!isOwner)
         {
-            string msg = args.ExceptionObject?.ToString() ?? "Unknown fatal error";
-            MessageBox.Show(msg, "ProcessAnalyzerPro — Fatal", MessageBoxButton.OK, MessageBoxImage.Error);
-        };
+            // Another instance is running — signal it to show itself and exit
+            try { using var h = EventWaitHandle.OpenExisting(EventName); h.Set(); }
+            catch { }
+            Shutdown();
+            return;
+        }
+
+        // Background thread listens for "show me" signals from future duplicate launches
+        var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, EventName);
+        new Thread(() =>
+        {
+            while (showEvent.WaitOne())
+                Dispatcher.InvokeAsync(() => (MainWindow as MainWindow)?.BringToFront());
+        }) { IsBackground = true }.Start();
+
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            MessageBox.Show(args.ExceptionObject?.ToString() ?? "Unknown fatal error",
+                "Sakura Pulse — Fatal", MessageBoxButton.OK, MessageBoxImage.Error);
 
         DispatcherUnhandledException += (_, args) =>
         {
             MessageBox.Show(args.Exception.ToString(),
-                "ProcessAnalyzerPro — Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                "Sakura Pulse — Error", MessageBoxButton.OK, MessageBoxImage.Error);
             args.Handled = true;
         };
 
-        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, args) =>
+        TaskScheduler.UnobservedTaskException += (_, args) =>
         {
             MessageBox.Show(args.Exception.ToString(),
-                "ProcessAnalyzerPro — Task Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                "Sakura Pulse — Task Error", MessageBoxButton.OK, MessageBoxImage.Error);
             args.SetObserved();
         };
 
         base.OnStartup(e);
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _mutex?.ReleaseMutex();
+        _mutex?.Dispose();
+        base.OnExit(e);
     }
 }

@@ -55,7 +55,9 @@ public partial class MainWindow : Window
         return ni;
     }
 
-    private void ShowFromTray()
+    private void ShowFromTray() => BringToFront();
+
+    public void BringToFront()
     {
         Show();
         WindowState = WindowState.Normal;
