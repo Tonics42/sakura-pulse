@@ -22,15 +22,18 @@ public partial class App : Application
             return;
         }
 
-        CreateDesktopShortcut();
-
-        // Background thread listens for "show me" signals from future duplicate launches
+        // Create the signal handle before any slow startup work (e.g. the COM
+        // call below) so a duplicate launch racing us here can always find it —
+        // otherwise OpenExisting() throws, gets swallowed, and the second
+        // launch silently exits without bringing the running window forward.
         var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, EventName);
         new Thread(() =>
         {
             while (showEvent.WaitOne())
                 Dispatcher.InvokeAsync(() => (MainWindow as MainWindow)?.BringToFront());
         }) { IsBackground = true }.Start();
+
+        CreateDesktopShortcut();
 
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             MessageBox.Show(args.ExceptionObject?.ToString() ?? "Unknown fatal error",
